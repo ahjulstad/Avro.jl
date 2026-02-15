@@ -1,7 +1,7 @@
 using Avro
 using Documenter
 
-DocMeta.setdocmeta!(Avro, :DocTestSetup, :(using Avro); recursive=true)
+DocMeta.setdocmeta!(Avro, :DocTestSetup, :(using Avro, StructTypes); recursive=true)
 
 makedocs(;
     modules=[Avro],

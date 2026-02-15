@@ -116,6 +116,7 @@ end
 include("utils.jl")
 include("types.jl")
 include("tables.jl")
+include("codegen.jl")
 
 const COMPRESSORS = Dict{Symbol, Any}(
     :bzip2 => Bzip2Compressor[],

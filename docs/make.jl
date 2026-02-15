@@ -20,6 +20,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/JuliaData/Avro.jl",
-    devbranch = "main",
+    repo="github.com/ahjulstad/Avro.jl",
+    devbranch="main",
 )

@@ -39,7 +39,7 @@ write("src/avro_types.jl", code)
 
 See also [`Avro.generate_type`](@ref).
 """
-function generate_code(schema_or_file; module_name::Union{Nothing, String}=nothing)
+function generate_code(schema_or_file; module_name::Union{Nothing,String}=nothing)
     sch = _to_schema(schema_or_file)
     # Collect all named types in dependency order
     named_types = OrderedTypeCollector()
@@ -166,14 +166,14 @@ end
 
 # Ordered collector to gather named types in dependency order
 struct NamedTypeEntry
-    schema::Union{RecordType, EnumType}
+    schema::Union{RecordType,EnumType}
 end
 
 mutable struct OrderedTypeCollector
-    types::Vector{Pair{String, NamedTypeEntry}}
+    types::Vector{Pair{String,NamedTypeEntry}}
     seen::Set{String}
 end
-OrderedTypeCollector() = OrderedTypeCollector(Pair{String, NamedTypeEntry}[], Set{String}())
+OrderedTypeCollector() = OrderedTypeCollector(Pair{String,NamedTypeEntry}[], Set{String}())
 
 function _add_type!(c::OrderedTypeCollector, name::String, entry::NamedTypeEntry)
     if name ∉ c.seen
@@ -232,14 +232,14 @@ function _julia_type_str(sch::Schema)::String
 end
 
 function _julia_type_str_impl(sch::String)
-    sch == "null"    && return "Missing"
+    sch == "null" && return "Missing"
     sch == "boolean" && return "Bool"
-    sch == "int"     && return "Int32"
-    sch == "long"    && return "Int64"
-    sch == "float"   && return "Float32"
-    sch == "double"  && return "Float64"
-    sch == "bytes"   && return "Vector{UInt8}"
-    sch == "string"  && return "String"
+    sch == "int" && return "Int32"
+    sch == "long" && return "Int64"
+    sch == "float" && return "Float32"
+    sch == "double" && return "Float64"
+    sch == "bytes" && return "Vector{UInt8}"
+    sch == "string" && return "String"
     # Could be a named type reference
     return _sanitize_name(sch)
 end
@@ -438,7 +438,7 @@ function _emit_type_to_io!(io::IO, sch::RecordType)
     # StructTypes declaration
     println(io, "StructTypes.StructType(::Type{$name}) = StructTypes.Struct()")
     # If any field name was sanitized, emit a name mapping
-    mappings = Pair{String, String}[]
+    mappings = Pair{String,String}[]
     for field in sch.fields
         sanitized = _sanitize_field_name(field.name)
         if sanitized != field.name
@@ -469,10 +469,10 @@ function _sanitize_field_name(name::String)
     end
     # Avoid Julia reserved words
     if s in ("end", "begin", "function", "macro", "module", "struct",
-             "abstract", "mutable", "primitive", "type", "if", "else",
-             "elseif", "for", "while", "try", "catch", "finally",
-             "return", "break", "continue", "import", "using", "export",
-             "const", "let", "do", "in", "global", "local", "true", "false")
+        "abstract", "mutable", "primitive", "type", "if", "else",
+        "elseif", "for", "while", "try", "catch", "finally",
+        "return", "break", "continue", "import", "using", "export",
+        "const", "let", "do", "in", "global", "local", "true", "false")
         s = s * "_"
     end
     return s

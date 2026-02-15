@@ -1,6 +1,6 @@
 #TODO:
-  # schema resolution
-  # parsing canonical form
+# schema resolution
+# parsing canonical form
 """
 The Avro.jl package provides a pure Julia implementation for reading
 writing data in the [avro format](http://avro.apache.org/docs/current/spec.html).
@@ -118,7 +118,7 @@ include("types.jl")
 include("tables.jl")
 include("codegen.jl")
 
-const COMPRESSORS = Dict{Symbol, Any}(
+const COMPRESSORS = Dict{Symbol,Any}(
     :bzip2 => Bzip2Compressor[],
     :xz => XzCompressor[],
     :deflate => DeflateCompressor[],
@@ -126,7 +126,7 @@ const COMPRESSORS = Dict{Symbol, Any}(
     # :snappy => SnappyCompressor[],
 )
 
-const DECOMPRESSORS = Dict{Symbol, Any}(
+const DECOMPRESSORS = Dict{Symbol,Any}(
     :bzip2 => Bzip2Decompressor,
     :xz => XzDecompressor,
     :deflate => DeflateDecompressor,

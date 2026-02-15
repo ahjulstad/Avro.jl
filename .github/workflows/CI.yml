@@ -25,6 +25,8 @@ jobs:
         arch:
           - x64
     continue-on-error: ${{ matrix.version == 'pre' }}
+    env:
+      JULIA_PKG_SERVER: ${{ matrix.version == 'pre' && ' ' || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2

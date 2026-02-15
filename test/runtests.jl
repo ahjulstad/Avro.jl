@@ -232,6 +232,324 @@ tbl = Avro.readtable(io)
 
 end
 
+@testset "Code generation" begin
+
+@testset "generate_code: simple record" begin
+    code = Avro.generate_code("""
+    {
+      "type": "record",
+      "name": "Point",
+      "fields": [
+        {"name": "x", "type": "double"},
+        {"name": "y", "type": "double"}
+      ]
+    }
+    """)
+    @test occursin("struct Point", code)
+    @test occursin("x::Float64", code)
+    @test occursin("y::Float64", code)
+    @test occursin("StructTypes.StructType(::Type{Point}) = StructTypes.Struct()", code)
+    @test occursin("using StructTypes", code)
+end
+
+@testset "generate_code: nested records" begin
+    code = Avro.generate_code("""
+    {
+      "type": "record",
+      "name": "Outer",
+      "fields": [
+        {"name": "id", "type": "long"},
+        {"name": "inner", "type": {
+          "type": "record",
+          "name": "Inner",
+          "fields": [
+            {"name": "value", "type": "double"}
+          ]
+        }}
+      ]
+    }
+    """)
+    @test occursin("struct Inner", code)
+    @test occursin("struct Outer", code)
+    @test occursin("inner::Inner", code)
+    # Inner must appear before Outer (dependency order)
+    @test findfirst("struct Inner", code)[1] < findfirst("struct Outer", code)[1]
+end
+
+@testset "generate_code: enum" begin
+    code = Avro.generate_code("""
+    {"type": "enum", "name": "Color", "symbols": ["RED", "GREEN", "BLUE"]}
+    """)
+    @test occursin("const Color = Avro.Enum{(:RED, :GREEN, :BLUE,)}", code)
+end
+
+@testset "generate_code: logical types" begin
+    code = Avro.generate_code("""
+    {
+      "type": "record",
+      "name": "Event",
+      "fields": [
+        {"name": "ts", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+        {"name": "d", "type": {"type": "int", "logicalType": "date"}},
+        {"name": "uid", "type": {"type": "string", "logicalType": "uuid"}}
+      ]
+    }
+    """)
+    @test occursin("ts::DateTime", code)
+    @test occursin("d::Date", code)
+    @test occursin("uid::UUID", code)
+    @test occursin("using Dates", code)
+    @test occursin("UUIDs", code)
+end
+
+@testset "generate_code: union / nullable" begin
+    code = Avro.generate_code("""
+    {
+      "type": "record",
+      "name": "R",
+      "fields": [
+        {"name": "opt", "type": ["null", "string"]},
+        {"name": "multi", "type": ["null", "int", "double"]}
+      ]
+    }
+    """)
+    @test occursin("opt::Union{Missing, String}", code)
+    @test occursin("multi::Union{Missing, Int32, Float64}", code)
+end
+
+@testset "generate_code: arrays and maps" begin
+    code = Avro.generate_code("""
+    {
+      "type": "record",
+      "name": "Container",
+      "fields": [
+        {"name": "items", "type": {"type": "array", "items": "long"}},
+        {"name": "labels", "type": {"type": "map", "values": "string"}}
+      ]
+    }
+    """)
+    @test occursin("items::Vector{Int64}", code)
+    @test occursin("labels::Dict{String, String}", code)
+end
+
+@testset "generate_code: fixed" begin
+    code = Avro.generate_code("""
+    {
+      "type": "record",
+      "name": "HasFixed",
+      "fields": [
+        {"name": "checksum", "type": {"type": "fixed", "name": "MD5", "size": 16}}
+      ]
+    }
+    """)
+    @test occursin("checksum::NTuple{16, UInt8}", code)
+end
+
+@testset "generate_code: doc strings" begin
+    code = Avro.generate_code("""
+    {
+      "type": "record",
+      "name": "Documented",
+      "doc": "A documented record",
+      "fields": [
+        {"name": "x", "type": "int", "doc": "the x value"}
+      ]
+    }
+    """)
+    @test occursin("\"\"\"A documented record\"\"\"", code)
+    @test occursin("# the x value", code)
+end
+
+@testset "generate_code: field name sanitization" begin
+    code = Avro.generate_code("""
+    {
+      "type": "record",
+      "name": "Weird",
+      "fields": [
+        {"name": "my-field", "type": "int"},
+        {"name": "end", "type": "string"}
+      ]
+    }
+    """)
+    @test occursin("my_field::Int32", code)
+    @test occursin("end_::String", code)
+    # StructTypes.names mapping for sanitized field names
+    @test occursin("StructTypes.names", code)
+end
+
+@testset "generate_code: namespace stripping" begin
+    code = Avro.generate_code("""
+    {
+      "type": "record",
+      "name": "com.example.MyRecord",
+      "fields": [
+        {"name": "val", "type": "int"}
+      ]
+    }
+    """)
+    @test occursin("struct MyRecord", code)
+    @test !occursin("com.example", code)
+end
+
+@testset "generate_code: module wrapper" begin
+    code = Avro.generate_code("""
+    {"type": "record", "name": "P", "fields": [{"name": "x", "type": "int"}]}
+    """; module_name="MyModule")
+    @test occursin("module MyModule", code)
+    @test occursin("end # module MyModule", code)
+end
+
+@testset "generate_type: round-trip simple record" begin
+    T = Avro.generate_type("""
+    {
+      "type": "record",
+      "name": "Point",
+      "fields": [
+        {"name": "x", "type": "double"},
+        {"name": "y", "type": "double"}
+      ]
+    }
+    """)
+    obj = T(1.0, 2.0)
+    buf = Avro.write(obj)
+    result = Avro.read(buf, T)
+    @test result.x === 1.0
+    @test result.y === 2.0
+end
+
+@testset "generate_type: round-trip nested records" begin
+    T = Avro.generate_type("""
+    {
+      "type": "record",
+      "name": "Outer",
+      "fields": [
+        {"name": "id", "type": "long"},
+        {"name": "inner", "type": {
+          "type": "record",
+          "name": "Inner",
+          "fields": [{"name": "value", "type": "double"}]
+        }}
+      ]
+    }
+    """)
+    Inner = fieldtype(T, :inner)
+    obj = T(42, Inner(3.14))
+    buf = Avro.write(obj)
+    result = Avro.read(buf, T)
+    @test result.id === Int64(42)
+    @test result.inner.value === 3.14
+end
+
+@testset "generate_type: round-trip with nullable" begin
+    T = Avro.generate_type("""
+    {
+      "type": "record",
+      "name": "Nullable",
+      "fields": [
+        {"name": "name", "type": "string"},
+        {"name": "age", "type": ["null", "int"]}
+      ]
+    }
+    """)
+    # Present value
+    obj1 = T("Alice", Int32(30))
+    buf1 = Avro.write(obj1)
+    r1 = Avro.read(buf1, T)
+    @test r1.name == "Alice"
+    @test r1.age === Int32(30)
+    # Missing value
+    obj2 = T("Bob", missing)
+    buf2 = Avro.write(obj2)
+    r2 = Avro.read(buf2, T)
+    @test r2.name == "Bob"
+    @test ismissing(r2.age)
+end
+
+@testset "generate_type: round-trip with arrays and maps" begin
+    T = Avro.generate_type("""
+    {
+      "type": "record",
+      "name": "Container",
+      "fields": [
+        {"name": "items", "type": {"type": "array", "items": "long"}},
+        {"name": "labels", "type": {"type": "map", "values": "string"}}
+      ]
+    }
+    """)
+    obj = T([1, 2, 3], Dict("a" => "x", "b" => "y"))
+    buf = Avro.write(obj)
+    result = Avro.read(buf, T)
+    @test result.items == [1, 2, 3]
+    @test result.labels == Dict("a" => "x", "b" => "y")
+end
+
+@testset "generate_type: enum" begin
+    T = Avro.generate_type("""{"type":"enum","name":"Status","symbols":["ACTIVE","INACTIVE"]}""")
+    @test T === Avro.Enum{(:ACTIVE, :INACTIVE)}
+end
+
+@testset "generate_type: .avsc file" begin
+    # Write a temp .avsc file and read it
+    path = tempname() * ".avsc"
+    write(path, """{"type":"record","name":"FromFile","fields":[{"name":"n","type":"int"}]}""")
+    T = Avro.generate_type(path)
+    obj = T(Int32(7))
+    buf = Avro.write(obj)
+    result = Avro.read(buf, T)
+    @test result.n === Int32(7)
+
+    code = Avro.generate_code(path)
+    @test occursin("struct FromFile", code)
+    rm(path; force=true)
+end
+
+@testset "generate_code: all primitive field types" begin
+    code = Avro.generate_code("""
+    {
+      "type": "record",
+      "name": "AllPrims",
+      "fields": [
+        {"name": "a", "type": "null"},
+        {"name": "b", "type": "boolean"},
+        {"name": "c", "type": "int"},
+        {"name": "d", "type": "long"},
+        {"name": "e", "type": "float"},
+        {"name": "f", "type": "double"},
+        {"name": "g", "type": "bytes"},
+        {"name": "h", "type": "string"}
+      ]
+    }
+    """)
+    @test occursin("a::Missing", code)
+    @test occursin("b::Bool", code)
+    @test occursin("c::Int32", code)
+    @test occursin("d::Int64", code)
+    @test occursin("e::Float32", code)
+    @test occursin("f::Float64", code)
+    @test occursin("g::Vector{UInt8}", code)
+    @test occursin("h::String", code)
+end
+
+@testset "generate_type: record with enum field" begin
+    T = Avro.generate_type("""
+    {
+      "type": "record",
+      "name": "WithEnum",
+      "fields": [
+        {"name": "status", "type": {"type": "enum", "name": "Status", "symbols": ["ON", "OFF"]}},
+        {"name": "count", "type": "int"}
+      ]
+    }
+    """)
+    obj = T(Avro.Enum{(:ON, :OFF)}(0), Int32(5))
+    buf = Avro.write(obj)
+    result = Avro.read(buf, T)
+    @test result.status == Avro.Enum{(:ON, :OFF)}(0)
+    @test result.count === Int32(5)
+end
+
+end # @testset "Code generation"
+
 
 # using CSV, Dates, Tables, Test
 # const dir = joinpath(dirname(pathof(CSV)), "..", "test", "testfiles")

@@ -1,5 +1,6 @@
 ```@meta
 CurrentModule = Avro
+DocTestSetup = :(using Avro, StructTypes)
 ```
 
 # Avro.jl Documentation
@@ -9,6 +10,7 @@ Avro.jl is a pure Julia implementation of the [Apache Avro](https://avro.apache.
 - **Binary encoding/decoding** of all Avro primitive, complex, and logical types
 - **Object container files** with built-in schema and compression, accessible via the [Tables.jl](https://github.com/JuliaData/Tables.jl) interface
 - **Automatic schema derivation** from Julia types, or parsing of external Avro JSON schemas
+- **Code generation** from Avro JSON schemas to Julia struct definitions
 
 If you are new to Avro, the key idea is simple: every value is written against a **schema** (defined in JSON), producing a very compact binary representation. Object container files embed the schema in the file header, making the data self-describing.
 
@@ -26,8 +28,6 @@ Pkg.add("Avro")
 ### Primitive types
 
 ```jldoctest
-julia> using Avro
-
 julia> buf = Avro.write(42);
 
 julia> Avro.read(buf, Int)
@@ -54,8 +54,6 @@ true
 Julia `NamedTuple`s map directly to Avro records:
 
 ```jldoctest
-julia> using Avro
-
 julia> row = (id = Int32(1), name = "Alice", score = 95.5);
 
 julia> buf = Avro.write(row);
@@ -67,8 +65,6 @@ julia> Avro.read(buf, typeof(row))
 ### Arrays and Maps
 
 ```jldoctest
-julia> using Avro
-
 julia> xs = [1, 2, 3];
 
 julia> Avro.read(Avro.write(xs), typeof(xs))
@@ -97,8 +93,6 @@ Avro.read(Avro.write(d), typeof(d))     # Dict("a" => 1, "b" => 2)
 Any Julia struct can be serialized by declaring a [`StructTypes.jl`](https://github.com/JuliaData/StructTypes.jl) mapping:
 
 ```jldoctest sensor
-julia> using Avro, StructTypes
-
 julia> struct Sensor
            id::Int
            location::String
@@ -164,7 +158,7 @@ Logical types are primitive/complex types annotated with a `logicalType` attribu
 | `duration`                 | `Avro.Duration`      | `fixed` (12 bytes)   |
 
 ```jldoctest
-julia> using Avro, Dates, UUIDs
+julia> using Dates, UUIDs
 
 julia> Avro.read(Avro.write(Date(2025, 6, 15)), Date)
 2025-06-15
@@ -190,8 +184,6 @@ Avro.read(Avro.write(u), UUID) == u  # true
 ### Enums
 
 ```jldoctest
-julia> using Avro
-
 julia> x = Avro.Enum{(:HEARTS, :DIAMONDS, :CLUBS)}(0);  # HEARTS (zero-indexed)
 
 julia> buf = Avro.write(x);
@@ -205,8 +197,6 @@ HEARTS = 0
 Use Julia `Union` types. When writing, you must pass the union type as the `schema` keyword so the encoder knows all possible branches:
 
 ```jldoctest
-julia> using Avro
-
 julia> buf = Avro.write(42; schema=Union{Int, String});
 
 julia> Avro.read(buf, Union{Int, String})
@@ -221,8 +211,6 @@ julia> Avro.read(buf, Union{Int, String})
 Nullable values (common in Avro) use `Union{Missing, T}`:
 
 ```jldoctest
-julia> using Avro
-
 julia> Row = @NamedTuple{name::String, age::Union{Missing, Int64}};
 
 julia> row = Row(("Alice", 30));
@@ -245,7 +233,7 @@ julia> Avro.read(Avro.write(row2), typeof(row2))
 `Avro.schematype(T)` derives an Avro schema from any supported Julia type. You can inspect it as JSON:
 
 ```julia
-using Avro, JSON3
+using JSON3
 
 sch = Avro.schematype(typeof((id = Int32(1), name = "Alice")))
 JSON3.write(sch)
@@ -339,6 +327,113 @@ Here are some common schema patterns for reference. See the [Avro specification]
 
 ---
 
+## Code Generation from Schemas
+
+When consuming data defined by external Avro schemas (e.g. `.avsc` files from
+other teams or services), you can automatically generate matching Julia structs.
+
+### `generate_code` — Source Code
+
+Generate Julia source code as a `String`, suitable for writing to a file
+and including in your project:
+
+```julia
+code = Avro.generate_code("""
+{
+  "type": "record",
+  "name": "SensorReading",
+  "doc": "A sensor measurement",
+  "fields": [
+    {"name": "sensor_id", "type": "long"},
+    {"name": "temperature", "type": "double"},
+    {"name": "location", "type": ["null", "string"]},
+    {"name": "tags", "type": {"type": "array", "items": "string"}},
+    {"name": "metadata", "type": {"type": "map", "values": "int"}}
+  ]
+}
+""")
+println(code)
+```
+
+Output:
+
+```julia
+using StructTypes
+
+"""A sensor measurement"""
+struct SensorReading
+    sensor_id::Int64
+    temperature::Float64
+    location::Union{Missing, String}
+    tags::Vector{String}
+    metadata::Dict{String, Int32}
+end
+StructTypes.StructType(::Type{SensorReading}) = StructTypes.Struct()
+```
+
+Save to a file for your project:
+
+```julia
+write("src/avro_types.jl", code)
+```
+
+The input can be a JSON string, a `.avsc` file path, or a parsed schema.
+Use `module_name` to wrap definitions in a module:
+
+```julia
+code = Avro.generate_code("schema.avsc"; module_name="MyTypes")
+```
+
+### `generate_type` — Live Type
+
+Create a Julia type at runtime for interactive or scripting use:
+
+```julia
+T = Avro.generate_type("""
+{
+  "type": "record",
+  "name": "Point",
+  "fields": [
+    {"name": "x", "type": "double"},
+    {"name": "y", "type": "double"}
+  ]
+}
+""")
+
+obj = T(1.0, 2.0)
+buf = Avro.write(obj)
+result = Avro.read(buf, T)
+result.x  # 1.0
+```
+
+### Nested Records, Enums, and Logical Types
+
+Code generation handles the full Avro type system:
+
+```julia
+code = Avro.generate_code("""
+{
+  "type": "record",
+  "name": "Event",
+  "fields": [
+    {"name": "ts", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "uid", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "status", "type": {"type": "enum", "name": "Status", "symbols": ["ACTIVE", "INACTIVE"]}},
+    {"name": "payload", "type": {
+      "type": "record",
+      "name": "Payload",
+      "fields": [{"name": "data", "type": "bytes"}]
+    }}
+  ]
+}
+""")
+```
+
+Produces structs in dependency order (inner types first), with the correct
+`using` imports (`Dates`, `UUIDs`, etc.) automatically included.
+
+---
+
 ## Object Container Files (Tables.jl)
 
 Object container files are Avro's standard file format. They embed the schema in the file header and support block-level compression, making them fully self-describing.
@@ -348,8 +443,6 @@ Object container files are Avro's standard file format. They embed the schema in
 [`Avro.writetable`](@ref) writes any [Tables.jl](https://github.com/JuliaData/Tables.jl)-compatible source to an Avro container file:
 
 ```julia
-using Avro
-
 rows = [
     (id = Int32(1), name = "Alice", score = 95.5),
     (id = Int32(2), name = "Bob",   score = 87.0),

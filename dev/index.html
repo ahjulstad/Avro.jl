@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Home · Avro.jl</title><link rel="canonical" href="https://JuliaData.github.io/Avro.jl/"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">Avro.jl</span></div><form class="docs-search" action="search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>Home</a><ul class="internal"><li><a class="tocitem" href="#Installation"><span>Installation</span></a></li><li><a class="tocitem" href="#Quick-Start:-Round-Trip-Examples"><span>Quick Start: Round-Trip Examples</span></a></li><li><a class="tocitem" href="#Schema-and-Type-Mapping"><span>Schema &amp; Type Mapping</span></a></li><li><a class="tocitem" href="#Working-with-Schemas"><span>Working with Schemas</span></a></li><li><a class="tocitem" href="#Code-Generation-from-Schemas"><span>Code Generation from Schemas</span></a></li><li><a class="tocitem" href="#Object-Container-Files-(Tables.jl)"><span>Object Container Files (Tables.jl)</span></a></li><li><a class="tocitem" href="#Kafka-Integration-(with-RDKafka.jl)"><span>Kafka Integration (with RDKafka.jl)</span></a></li><li><a class="tocitem" href="#API-Reference"><span>API Reference</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Home</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Home</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/JuliaData/Avro.jl/blob/main/docs/src/index.md#" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Avro.jl-Documentation"><a class="docs-heading-anchor" href="#Avro.jl-Documentation">Avro.jl Documentation</a><a id="Avro.jl-Documentation-1"></a><a class="docs-heading-anchor-permalink" href="#Avro.jl-Documentation" title="Permalink"></a></h1><p>Avro.jl is a pure Julia implementation of the <a href="https://avro.apache.org/docs/1.12.0/specification/">Apache Avro</a> data serialization standard. It provides:</p><ul><li><strong>Binary encoding/decoding</strong> of all Avro primitive, complex, and logical types</li><li><strong>Object container files</strong> with built-in schema and compression, accessible via the <a href="https://github.com/JuliaData/Tables.jl">Tables.jl</a> interface</li><li><strong>Automatic schema derivation</strong> from Julia types, or parsing of external Avro JSON schemas</li><li><strong>Code generation</strong> from Avro JSON schemas to Julia struct definitions</li></ul><p>If you are new to Avro, the key idea is simple: every value is written against a <strong>schema</strong> (defined in JSON), producing a very compact binary representation. Object container files embed the schema in the file header, making the data self-describing.</p><h2 id="Installation"><a class="docs-heading-anchor" href="#Installation">Installation</a><a id="Installation-1"></a><a class="docs-heading-anchor-permalink" href="#Installation" title="Permalink"></a></h2><pre><code class="language-julia">using Pkg
+Pkg.add(&quot;Avro&quot;)</code></pre><hr/><h2 id="Quick-Start:-Round-Trip-Examples"><a class="docs-heading-anchor" href="#Quick-Start:-Round-Trip-Examples">Quick Start: Round-Trip Examples</a><a id="Quick-Start:-Round-Trip-Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Quick-Start:-Round-Trip-Examples" title="Permalink"></a></h2><h3 id="Primitive-types"><a class="docs-heading-anchor" href="#Primitive-types">Primitive types</a><a id="Primitive-types-1"></a><a class="docs-heading-anchor-permalink" href="#Primitive-types" title="Permalink"></a></h3><pre><code class="language-julia-repl">julia&gt; buf = Avro.write(42);
+
+julia&gt; Avro.read(buf, Int)
+42
+
+julia&gt; buf = Avro.write(3.14);
+
+julia&gt; Avro.read(buf, Float64)
+3.14
+
+julia&gt; buf = Avro.write(&quot;hello&quot;);
+
+julia&gt; Avro.read(buf, String)
+&quot;hello&quot;
+
+julia&gt; buf = Avro.write(true);
+
+julia&gt; Avro.read(buf, Bool)
+true</code></pre><h3 id="Records-(NamedTuples)"><a class="docs-heading-anchor" href="#Records-(NamedTuples)">Records (NamedTuples)</a><a id="Records-(NamedTuples)-1"></a><a class="docs-heading-anchor-permalink" href="#Records-(NamedTuples)" title="Permalink"></a></h3><p>Julia <code>NamedTuple</code>s map directly to Avro records:</p><pre><code class="language-julia-repl">julia&gt; row = (id = Int32(1), name = &quot;Alice&quot;, score = 95.5);
+
+julia&gt; buf = Avro.write(row);
+
+julia&gt; Avro.read(buf, typeof(row))
+(id = 1, name = &quot;Alice&quot;, score = 95.5)</code></pre><h3 id="Arrays-and-Maps"><a class="docs-heading-anchor" href="#Arrays-and-Maps">Arrays and Maps</a><a id="Arrays-and-Maps-1"></a><a class="docs-heading-anchor-permalink" href="#Arrays-and-Maps" title="Permalink"></a></h3><pre><code class="language-julia-repl">julia&gt; xs = [1, 2, 3];
+
+julia&gt; Avro.read(Avro.write(xs), typeof(xs))
+3-element Vector{Int64}:
+ 1
+ 2
+ 3
+
+julia&gt; words = [&quot;avro&quot;, &quot;is&quot;, &quot;fast&quot;];
+
+julia&gt; Avro.read(Avro.write(words), typeof(words))
+3-element Vector{String}:
+ &quot;avro&quot;
+ &quot;is&quot;
+ &quot;fast&quot;</code></pre><pre><code class="language-julia"># Map (Dict with String keys) — output order may vary
+d = Dict(&quot;a&quot; =&gt; 1, &quot;b&quot; =&gt; 2)
+Avro.read(Avro.write(d), typeof(d))     # Dict(&quot;a&quot; =&gt; 1, &quot;b&quot; =&gt; 2)</code></pre><h3 id="Custom-structs"><a class="docs-heading-anchor" href="#Custom-structs">Custom structs</a><a id="Custom-structs-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-structs" title="Permalink"></a></h3><p>Any Julia struct can be serialized by declaring a <a href="https://github.com/JuliaData/StructTypes.jl"><code>StructTypes.jl</code></a> mapping:</p><pre><code class="language-julia-repl">julia&gt; struct Sensor
+           id::Int
+           location::String
+       end;
+
+julia&gt; StructTypes.StructType(::Type{Sensor}) = StructTypes.Struct();
+
+julia&gt; s = Sensor(7, &quot;roof&quot;);
+
+julia&gt; buf = Avro.write(s);
+
+julia&gt; Avro.read(buf, Sensor)
+Sensor(7, &quot;roof&quot;)</code></pre><p>Nested structs work too — just declare <code>StructTypes.StructType</code> for each type.</p><hr/><h2 id="Schema-and-Type-Mapping"><a class="docs-heading-anchor" href="#Schema-and-Type-Mapping">Schema &amp; Type Mapping</a><a id="Schema-and-Type-Mapping-1"></a><a class="docs-heading-anchor-permalink" href="#Schema-and-Type-Mapping" title="Permalink"></a></h2><p>Avro schemas are defined in JSON. Avro.jl can <strong>automatically derive</strong> a schema from a Julia type, or <strong>parse</strong> an external JSON schema. This section shows how Avro types correspond to Julia types.</p><h3 id="Primitive-types-2"><a class="docs-heading-anchor" href="#Primitive-types-2">Primitive types</a><a class="docs-heading-anchor-permalink" href="#Primitive-types-2" title="Permalink"></a></h3><table><tr><th style="text-align: left">Avro type</th><th style="text-align: left">Julia type</th><th style="text-align: left">Example value</th></tr><tr><td style="text-align: left"><code>null</code></td><td style="text-align: left"><code>Missing</code></td><td style="text-align: left"><code>missing</code></td></tr><tr><td style="text-align: left"><code>boolean</code></td><td style="text-align: left"><code>Bool</code></td><td style="text-align: left"><code>true</code></td></tr><tr><td style="text-align: left"><code>int</code></td><td style="text-align: left"><code>Int32</code></td><td style="text-align: left"><code>Int32(42)</code></td></tr><tr><td style="text-align: left"><code>long</code></td><td style="text-align: left"><code>Int64</code></td><td style="text-align: left"><code>64</code></td></tr><tr><td style="text-align: left"><code>float</code></td><td style="text-align: left"><code>Float32</code></td><td style="text-align: left"><code>Float32(1.5)</code></td></tr><tr><td style="text-align: left"><code>double</code></td><td style="text-align: left"><code>Float64</code></td><td style="text-align: left"><code>3.14</code></td></tr><tr><td style="text-align: left"><code>bytes</code></td><td style="text-align: left"><code>Vector{UInt8}</code></td><td style="text-align: left"><code>UInt8[0x01]</code></td></tr><tr><td style="text-align: left"><code>string</code></td><td style="text-align: left"><code>String</code></td><td style="text-align: left"><code>&quot;hello&quot;</code></td></tr></table><h3 id="Complex-types"><a class="docs-heading-anchor" href="#Complex-types">Complex types</a><a id="Complex-types-1"></a><a class="docs-heading-anchor-permalink" href="#Complex-types" title="Permalink"></a></h3><table><tr><th style="text-align: left">Avro type</th><th style="text-align: left">Julia type</th><th style="text-align: left">Notes</th></tr><tr><td style="text-align: left"><code>record</code></td><td style="text-align: left"><code>NamedTuple</code> or struct (with StructTypes)</td><td style="text-align: left">Fields correspond to tuple/struct fields</td></tr><tr><td style="text-align: left"><code>enum</code></td><td style="text-align: left"><code>Avro.Enum{(:sym1, :sym2, ...)}</code></td><td style="text-align: left">Zero-indexed by position</td></tr><tr><td style="text-align: left"><code>array</code></td><td style="text-align: left"><code>Vector{T}</code></td><td style="text-align: left">Element type <code>T</code> maps to the <code>items</code> schema</td></tr><tr><td style="text-align: left"><code>map</code></td><td style="text-align: left"><code>Dict{String, V}</code></td><td style="text-align: left">Keys are always strings; value type <code>V</code> maps to the <code>values</code> schema</td></tr><tr><td style="text-align: left"><code>union</code></td><td style="text-align: left"><code>Union{T1, T2, ...}</code></td><td style="text-align: left">Written with a leading index to identify the branch</td></tr><tr><td style="text-align: left"><code>fixed</code></td><td style="text-align: left"><code>NTuple{N, UInt8}</code></td><td style="text-align: left">A fixed number of bytes</td></tr></table><h3 id="Logical-types"><a class="docs-heading-anchor" href="#Logical-types">Logical types</a><a id="Logical-types-1"></a><a class="docs-heading-anchor-permalink" href="#Logical-types" title="Permalink"></a></h3><p>Logical types are primitive/complex types annotated with a <code>logicalType</code> attribute to represent higher-level concepts:</p><table><tr><th style="text-align: left">Avro logical type</th><th style="text-align: left">Julia type</th><th style="text-align: left">Underlying Avro type</th></tr><tr><td style="text-align: left"><code>date</code></td><td style="text-align: left"><code>Dates.Date</code></td><td style="text-align: left"><code>int</code></td></tr><tr><td style="text-align: left"><code>time-millis</code></td><td style="text-align: left"><code>Dates.Time</code></td><td style="text-align: left"><code>int</code></td></tr><tr><td style="text-align: left"><code>time-micros</code></td><td style="text-align: left"><code>Dates.Time</code></td><td style="text-align: left"><code>long</code></td></tr><tr><td style="text-align: left"><code>timestamp-millis</code></td><td style="text-align: left"><code>Dates.DateTime</code></td><td style="text-align: left"><code>long</code></td></tr><tr><td style="text-align: left"><code>timestamp-micros</code></td><td style="text-align: left"><code>Dates.DateTime</code></td><td style="text-align: left"><code>long</code></td></tr><tr><td style="text-align: left"><code>local-timestamp-millis</code></td><td style="text-align: left"><code>Dates.DateTime</code></td><td style="text-align: left"><code>long</code></td></tr><tr><td style="text-align: left"><code>local-timestamp-micros</code></td><td style="text-align: left"><code>Dates.DateTime</code></td><td style="text-align: left"><code>long</code></td></tr><tr><td style="text-align: left"><code>uuid</code></td><td style="text-align: left"><code>UUIDs.UUID</code></td><td style="text-align: left"><code>string</code></td></tr><tr><td style="text-align: left"><code>decimal</code></td><td style="text-align: left"><code>Avro.Decimal{S,P}</code></td><td style="text-align: left"><code>fixed</code></td></tr><tr><td style="text-align: left"><code>duration</code></td><td style="text-align: left"><code>Avro.Duration</code></td><td style="text-align: left"><code>fixed</code> (12 bytes)</td></tr></table><pre><code class="language-julia-repl">julia&gt; using Dates, UUIDs
+
+julia&gt; Avro.read(Avro.write(Date(2025, 6, 15)), Date)
+2025-06-15
+
+julia&gt; Avro.read(Avro.write(Time(14, 30, 0)), Time)
+14:30:00
+
+julia&gt; Avro.read(Avro.write(DateTime(2025, 6, 15, 14, 30)), DateTime)
+2025-06-15T14:30:00
+
+julia&gt; dur = Avro.Duration(1, 15, 3600000);  # 1 month, 15 days, 3600000 ms
+
+julia&gt; Avro.read(Avro.write(dur), Avro.Duration)
+Avro.Duration(1, 15, 3600000)</code></pre><pre><code class="language-julia"># UUIDs round-trip correctly (output varies)
+u = uuid4()
+Avro.read(Avro.write(u), UUID) == u  # true</code></pre><h3 id="Enums"><a class="docs-heading-anchor" href="#Enums">Enums</a><a id="Enums-1"></a><a class="docs-heading-anchor-permalink" href="#Enums" title="Permalink"></a></h3><pre><code class="language-julia-repl">julia&gt; x = Avro.Enum{(:HEARTS, :DIAMONDS, :CLUBS)}(0);  # HEARTS (zero-indexed)
+
+julia&gt; buf = Avro.write(x);
+
+julia&gt; Avro.read(buf, typeof(x))
+HEARTS = 0</code></pre><h3 id="Unions"><a class="docs-heading-anchor" href="#Unions">Unions</a><a id="Unions-1"></a><a class="docs-heading-anchor-permalink" href="#Unions" title="Permalink"></a></h3><p>Use Julia <code>Union</code> types. When writing, you must pass the union type as the <code>schema</code> keyword so the encoder knows all possible branches:</p><pre><code class="language-julia-repl">julia&gt; buf = Avro.write(42; schema=Union{Int, String});
+
+julia&gt; Avro.read(buf, Union{Int, String})
+42
+
+julia&gt; buf = Avro.write(&quot;hello&quot;; schema=Union{Int, String});
+
+julia&gt; Avro.read(buf, Union{Int, String})
+&quot;hello&quot;</code></pre><p>Nullable values (common in Avro) use <code>Union{Missing, T}</code>:</p><pre><code class="language-julia-repl">julia&gt; Row = @NamedTuple{name::String, age::Union{Missing, Int64}};
+
+julia&gt; row = Row((&quot;Alice&quot;, 30));
+
+julia&gt; Avro.read(Avro.write(row), typeof(row))
+@NamedTuple{name::String, age::Union{Missing, Int64}}((&quot;Alice&quot;, 30))
+
+julia&gt; row2 = Row((&quot;Bob&quot;, missing));
+
+julia&gt; Avro.read(Avro.write(row2), typeof(row2))
+@NamedTuple{name::String, age::Union{Missing, Int64}}((&quot;Bob&quot;, missing))</code></pre><hr/><h2 id="Working-with-Schemas"><a class="docs-heading-anchor" href="#Working-with-Schemas">Working with Schemas</a><a id="Working-with-Schemas-1"></a><a class="docs-heading-anchor-permalink" href="#Working-with-Schemas" title="Permalink"></a></h2><h3 id="Automatic-schema-derivation"><a class="docs-heading-anchor" href="#Automatic-schema-derivation">Automatic schema derivation</a><a id="Automatic-schema-derivation-1"></a><a class="docs-heading-anchor-permalink" href="#Automatic-schema-derivation" title="Permalink"></a></h3><p><code>Avro.schematype(T)</code> derives an Avro schema from any supported Julia type. You can inspect it as JSON:</p><pre><code class="language-julia">using JSON3
+
+sch = Avro.schematype(typeof((id = Int32(1), name = &quot;Alice&quot;)))
+JSON3.write(sch)
+# {&quot;type&quot;:&quot;record&quot;,&quot;name&quot;:&quot;...&quot;,&quot;fields&quot;:[{&quot;name&quot;:&quot;id&quot;,&quot;type&quot;:&quot;int&quot;},{&quot;name&quot;:&quot;name&quot;,&quot;type&quot;:&quot;string&quot;}]}
+
+# Works with custom structs too
+sch = Avro.schematype(Sensor)  # assuming Sensor is defined with StructTypes</code></pre><h3 id="Parsing-external-schemas"><a class="docs-heading-anchor" href="#Parsing-external-schemas">Parsing external schemas</a><a id="Parsing-external-schemas-1"></a><a class="docs-heading-anchor-permalink" href="#Parsing-external-schemas" title="Permalink"></a></h3><p>Use <a href="#Avro.parseschema-Tuple{Any}"><code>Avro.parseschema</code></a> to parse an Avro JSON schema string or <code>.avsc</code> file. The returned schema object can be passed directly to <code>Avro.read</code>:</p><pre><code class="language-julia"># From a JSON string
+sch = Avro.parseschema(&quot;&quot;&quot;
+{
+  &quot;type&quot;: &quot;record&quot;,
+  &quot;name&quot;: &quot;Measurement&quot;,
+  &quot;fields&quot;: [
+    {&quot;name&quot;: &quot;sensor_id&quot;, &quot;type&quot;: &quot;long&quot;},
+    {&quot;name&quot;: &quot;temp&quot;,      &quot;type&quot;: &quot;double&quot;},
+    {&quot;name&quot;: &quot;label&quot;,     &quot;type&quot;: [&quot;null&quot;, &quot;string&quot;]}
+  ]
+}
+&quot;&quot;&quot;)
+
+# From a .avsc file
+# sch = Avro.parseschema(&quot;schema.avsc&quot;)
+
+# Write data using a Julia type that matches the schema
+row = (sensor_id = 42, temp = 21.5, label = &quot;normal&quot;)
+buf = Avro.write(row)
+
+# Read using the parsed schema — useful when receiver only has the schema
+result = Avro.read(buf, sch)</code></pre><h3 id="Schema-examples-in-JSON"><a class="docs-heading-anchor" href="#Schema-examples-in-JSON">Schema examples in JSON</a><a id="Schema-examples-in-JSON-1"></a><a class="docs-heading-anchor-permalink" href="#Schema-examples-in-JSON" title="Permalink"></a></h3><p>Here are some common schema patterns for reference. See the <a href="https://avro.apache.org/docs/1.12.0/specification/#schema-declaration">Avro specification</a> for the full grammar.</p><p><strong>Primitive:</strong></p><pre><code class="language-json">&quot;string&quot;</code></pre><p><strong>Record with nullable field:</strong></p><pre><code class="language-json">{
+  &quot;type&quot;: &quot;record&quot;,
+  &quot;name&quot;: &quot;User&quot;,
+  &quot;fields&quot;: [
+    {&quot;name&quot;: &quot;id&quot;,    &quot;type&quot;: &quot;long&quot;},
+    {&quot;name&quot;: &quot;email&quot;, &quot;type&quot;: [&quot;null&quot;, &quot;string&quot;]}
+  ]
+}</code></pre><p><strong>Array of records:</strong></p><pre><code class="language-json">{
+  &quot;type&quot;: &quot;array&quot;,
+  &quot;items&quot;: {
+    &quot;type&quot;: &quot;record&quot;,
+    &quot;name&quot;: &quot;Point&quot;,
+    &quot;fields&quot;: [
+      {&quot;name&quot;: &quot;x&quot;, &quot;type&quot;: &quot;double&quot;},
+      {&quot;name&quot;: &quot;y&quot;, &quot;type&quot;: &quot;double&quot;}
+    ]
+  }
+}</code></pre><p><strong>Enum:</strong></p><pre><code class="language-json">{
+  &quot;type&quot;: &quot;enum&quot;,
+  &quot;name&quot;: &quot;Color&quot;,
+  &quot;symbols&quot;: [&quot;RED&quot;, &quot;GREEN&quot;, &quot;BLUE&quot;]
+}</code></pre><p><strong>Map (string → double):</strong></p><pre><code class="language-json">{
+  &quot;type&quot;: &quot;map&quot;,
+  &quot;values&quot;: &quot;double&quot;
+}</code></pre><hr/><h2 id="Code-Generation-from-Schemas"><a class="docs-heading-anchor" href="#Code-Generation-from-Schemas">Code Generation from Schemas</a><a id="Code-Generation-from-Schemas-1"></a><a class="docs-heading-anchor-permalink" href="#Code-Generation-from-Schemas" title="Permalink"></a></h2><p>When consuming data defined by external Avro schemas (e.g. <code>.avsc</code> files from other teams or services), you can automatically generate matching Julia structs.</p><h3 id="generate_code-—-Source-Code"><a class="docs-heading-anchor" href="#generate_code-—-Source-Code"><code>generate_code</code> — Source Code</a><a id="generate_code-—-Source-Code-1"></a><a class="docs-heading-anchor-permalink" href="#generate_code-—-Source-Code" title="Permalink"></a></h3><p>Generate Julia source code as a <code>String</code>, suitable for writing to a file and including in your project:</p><pre><code class="language-julia">code = Avro.generate_code(&quot;&quot;&quot;
+{
+  &quot;type&quot;: &quot;record&quot;,
+  &quot;name&quot;: &quot;SensorReading&quot;,
+  &quot;doc&quot;: &quot;A sensor measurement&quot;,
+  &quot;fields&quot;: [
+    {&quot;name&quot;: &quot;sensor_id&quot;, &quot;type&quot;: &quot;long&quot;},
+    {&quot;name&quot;: &quot;temperature&quot;, &quot;type&quot;: &quot;double&quot;},
+    {&quot;name&quot;: &quot;location&quot;, &quot;type&quot;: [&quot;null&quot;, &quot;string&quot;]},
+    {&quot;name&quot;: &quot;tags&quot;, &quot;type&quot;: {&quot;type&quot;: &quot;array&quot;, &quot;items&quot;: &quot;string&quot;}},
+    {&quot;name&quot;: &quot;metadata&quot;, &quot;type&quot;: {&quot;type&quot;: &quot;map&quot;, &quot;values&quot;: &quot;int&quot;}}
+  ]
+}
+&quot;&quot;&quot;)
+println(code)</code></pre><p>Output:</p><pre><code class="language-julia">using StructTypes
+
+&quot;&quot;&quot;A sensor measurement&quot;&quot;&quot;
+struct SensorReading
+    sensor_id::Int64
+    temperature::Float64
+    location::Union{Missing, String}
+    tags::Vector{String}
+    metadata::Dict{String, Int32}
+end
+StructTypes.StructType(::Type{SensorReading}) = StructTypes.Struct()</code></pre><p>Save to a file for your project:</p><pre><code class="language-julia">write(&quot;src/avro_types.jl&quot;, code)</code></pre><p>The input can be a JSON string, a <code>.avsc</code> file path, or a parsed schema. Use <code>module_name</code> to wrap definitions in a module:</p><pre><code class="language-julia">code = Avro.generate_code(&quot;schema.avsc&quot;; module_name=&quot;MyTypes&quot;)</code></pre><h3 id="generate_type-—-Live-Type"><a class="docs-heading-anchor" href="#generate_type-—-Live-Type"><code>generate_type</code> — Live Type</a><a id="generate_type-—-Live-Type-1"></a><a class="docs-heading-anchor-permalink" href="#generate_type-—-Live-Type" title="Permalink"></a></h3><p>Create a Julia type at runtime for interactive or scripting use:</p><pre><code class="language-julia">T = Avro.generate_type(&quot;&quot;&quot;
+{
+  &quot;type&quot;: &quot;record&quot;,
+  &quot;name&quot;: &quot;Point&quot;,
+  &quot;fields&quot;: [
+    {&quot;name&quot;: &quot;x&quot;, &quot;type&quot;: &quot;double&quot;},
+    {&quot;name&quot;: &quot;y&quot;, &quot;type&quot;: &quot;double&quot;}
+  ]
+}
+&quot;&quot;&quot;)
+
+obj = T(1.0, 2.0)
+buf = Avro.write(obj)
+result = Avro.read(buf, T)
+result.x  # 1.0</code></pre><h3 id="Nested-Records,-Enums,-and-Logical-Types"><a class="docs-heading-anchor" href="#Nested-Records,-Enums,-and-Logical-Types">Nested Records, Enums, and Logical Types</a><a id="Nested-Records,-Enums,-and-Logical-Types-1"></a><a class="docs-heading-anchor-permalink" href="#Nested-Records,-Enums,-and-Logical-Types" title="Permalink"></a></h3><p>Code generation handles the full Avro type system:</p><pre><code class="language-julia">code = Avro.generate_code(&quot;&quot;&quot;
+{
+  &quot;type&quot;: &quot;record&quot;,
+  &quot;name&quot;: &quot;Event&quot;,
+  &quot;fields&quot;: [
+    {&quot;name&quot;: &quot;ts&quot;, &quot;type&quot;: {&quot;type&quot;: &quot;long&quot;, &quot;logicalType&quot;: &quot;timestamp-millis&quot;}},
+    {&quot;name&quot;: &quot;uid&quot;, &quot;type&quot;: {&quot;type&quot;: &quot;string&quot;, &quot;logicalType&quot;: &quot;uuid&quot;}},
+    {&quot;name&quot;: &quot;status&quot;, &quot;type&quot;: {&quot;type&quot;: &quot;enum&quot;, &quot;name&quot;: &quot;Status&quot;, &quot;symbols&quot;: [&quot;ACTIVE&quot;, &quot;INACTIVE&quot;]}},
+    {&quot;name&quot;: &quot;payload&quot;, &quot;type&quot;: {
+      &quot;type&quot;: &quot;record&quot;,
+      &quot;name&quot;: &quot;Payload&quot;,
+      &quot;fields&quot;: [{&quot;name&quot;: &quot;data&quot;, &quot;type&quot;: &quot;bytes&quot;}]
+    }}
+  ]
+}
+&quot;&quot;&quot;)</code></pre><p>Produces structs in dependency order (inner types first), with the correct <code>using</code> imports (<code>Dates</code>, <code>UUIDs</code>, etc.) automatically included.</p><hr/><h2 id="Object-Container-Files-(Tables.jl)"><a class="docs-heading-anchor" href="#Object-Container-Files-(Tables.jl)">Object Container Files (Tables.jl)</a><a id="Object-Container-Files-(Tables.jl)-1"></a><a class="docs-heading-anchor-permalink" href="#Object-Container-Files-(Tables.jl)" title="Permalink"></a></h2><p>Object container files are Avro&#39;s standard file format. They embed the schema in the file header and support block-level compression, making them fully self-describing.</p><h3 id="Writing"><a class="docs-heading-anchor" href="#Writing">Writing</a><a id="Writing-1"></a><a class="docs-heading-anchor-permalink" href="#Writing" title="Permalink"></a></h3><p><a href="#Avro.writetable"><code>Avro.writetable</code></a> writes any <a href="https://github.com/JuliaData/Tables.jl">Tables.jl</a>-compatible source to an Avro container file:</p><pre><code class="language-julia">rows = [
+    (id = Int32(1), name = &quot;Alice&quot;, score = 95.5),
+    (id = Int32(2), name = &quot;Bob&quot;,   score = 87.0),
+    (id = Int32(3), name = &quot;Carol&quot;, score = 91.2),
+]
+
+# Write with zstd compression
+Avro.writetable(&quot;data.avro&quot;, rows; compress=:zstd)</code></pre><p>You can also pass a column table (any Tables.jl source):</p><pre><code class="language-julia">col_table = (id = Int32[1, 2, 3], name = [&quot;Alice&quot;, &quot;Bob&quot;, &quot;Carol&quot;], score = [95.5, 87.0, 91.2])
+Avro.writetable(&quot;data.avro&quot;, col_table; compress=:deflate)</code></pre><p>Supported compression codecs: <code>:deflate</code>, <code>:bzip2</code>, <code>:xz</code>, <code>:zstd</code>.</p><h3 id="Reading"><a class="docs-heading-anchor" href="#Reading">Reading</a><a id="Reading-1"></a><a class="docs-heading-anchor-permalink" href="#Reading" title="Permalink"></a></h3><p><a href="#Avro.readtable"><code>Avro.readtable</code></a> reads an Avro container file and returns an <a href="#Avro.Table"><code>Avro.Table</code></a>, which implements the Tables.jl row interface:</p><pre><code class="language-julia">tbl = Avro.readtable(&quot;data.avro&quot;)
+
+# Index into rows
+tbl[1]        # first record
+tbl[1].name   # &quot;Alice&quot;
+
+# Iterate
+for row in tbl
+    println(row.name, &quot;: &quot;, row.score)
+end
+
+length(tbl)   # number of records</code></pre><h3 id="Converting-to-other-formats"><a class="docs-heading-anchor" href="#Converting-to-other-formats">Converting to other formats</a><a id="Converting-to-other-formats-1"></a><a class="docs-heading-anchor-permalink" href="#Converting-to-other-formats" title="Permalink"></a></h3><p>Because <code>Avro.Table</code> is a Tables.jl source, it plugs into the entire Julia data ecosystem:</p><pre><code class="language-julia">using DataFrames
+df = DataFrame(Avro.readtable(&quot;data.avro&quot;))
+
+using CSV
+CSV.write(&quot;data.csv&quot;, Avro.readtable(&quot;data.avro&quot;))
+
+using Arrow
+Arrow.write(&quot;data.arrow&quot;, Avro.readtable(&quot;data.avro&quot;))</code></pre><h3 id="In-memory-round-trip-with-tobuffer"><a class="docs-heading-anchor" href="#In-memory-round-trip-with-tobuffer">In-memory round trip with <code>tobuffer</code></a><a id="In-memory-round-trip-with-tobuffer-1"></a><a class="docs-heading-anchor-permalink" href="#In-memory-round-trip-with-tobuffer" title="Permalink"></a></h3><p><a href="#Avro.tobuffer-Tuple{Any}"><code>Avro.tobuffer</code></a> is a convenience function that writes to an <code>IOBuffer</code> instead of a file — useful for testing and in-memory pipelines:</p><pre><code class="language-julia">io = Avro.tobuffer(rows; compress=:zstd)
+tbl = Avro.readtable(io)</code></pre><hr/><h2 id="Kafka-Integration-(with-RDKafka.jl)"><a class="docs-heading-anchor" href="#Kafka-Integration-(with-RDKafka.jl)">Kafka Integration (with RDKafka.jl)</a><a id="Kafka-Integration-(with-RDKafka.jl)-1"></a><a class="docs-heading-anchor-permalink" href="#Kafka-Integration-(with-RDKafka.jl)" title="Permalink"></a></h2><p><a href="https://kafka.apache.org/">Apache Kafka</a> is a distributed streaming platform frequently paired with Avro for compact, schema-aware message serialization. Julia&#39;s Kafka client is <a href="https://github.com/dfdx/RDKafka.jl">RDKafka.jl</a>, a wrapper around <code>librdkafka</code>.</p><p>Avro.jl does not depend on Kafka, but combined with RDKafka.jl you can produce and consume Avro-encoded messages with a few lines of code.</p><h3 id="Setup"><a class="docs-heading-anchor" href="#Setup">Setup</a><a id="Setup-1"></a><a class="docs-heading-anchor-permalink" href="#Setup" title="Permalink"></a></h3><pre><code class="language-julia">using Pkg
+Pkg.add(&quot;RDKafka&quot;)  # Kafka client (install once)</code></pre><h3 id="Producer:-serialize-and-publish"><a class="docs-heading-anchor" href="#Producer:-serialize-and-publish">Producer: serialize and publish</a><a id="Producer:-serialize-and-publish-1"></a><a class="docs-heading-anchor-permalink" href="#Producer:-serialize-and-publish" title="Permalink"></a></h3><pre><code class="language-julia">using Avro, RDKafka
+import RDKafka: produce
+
+# Define your schema / data type
+struct SensorReading
+    sensor_id::Int
+    temperature::Float64
+    timestamp::Int       # Unix millis
+end
+# (assumes StructTypes.StructType already declared for SensorReading)
+
+# Serialize to Avro bytes
+reading = SensorReading(42, 21.5, 1_718_400_000_000)
+payload = Avro.write(reading)
+
+# Publish to Kafka
+p = KafkaProducer(&quot;localhost:9092&quot;)
+produce(p, &quot;sensor-readings&quot;, 0, &quot;sensor-42&quot;, payload)</code></pre><h3 id="Consumer:-receive-and-deserialize"><a class="docs-heading-anchor" href="#Consumer:-receive-and-deserialize">Consumer: receive and deserialize</a><a id="Consumer:-receive-and-deserialize-1"></a><a class="docs-heading-anchor-permalink" href="#Consumer:-receive-and-deserialize" title="Permalink"></a></h3><pre><code class="language-julia">using Avro, RDKafka
+
+c = KafkaConsumer(&quot;localhost:9092&quot;, &quot;my-group&quot;)
+subscribe(c, [(&quot;sensor-readings&quot;, 0)])
+
+while true
+    msg = poll(Vector{UInt8}, Vector{UInt8}, c, 1000)
+    if msg !== nothing
+        reading = Avro.read(msg.value, SensorReading)
+        println(&quot;Sensor $(reading.sensor_id): $(reading.temperature)°C&quot;)
+    end
+end</code></pre><h3 id="Using-a-shared-schema"><a class="docs-heading-anchor" href="#Using-a-shared-schema">Using a shared schema</a><a id="Using-a-shared-schema-1"></a><a class="docs-heading-anchor-permalink" href="#Using-a-shared-schema" title="Permalink"></a></h3><p>When producer and consumer are separate services, you typically share the Avro schema (a <code>.avsc</code> file) rather than Julia type definitions. The consumer can parse the schema and read any compliant data:</p><pre><code class="language-julia"># Consumer side — no need for the SensorReading struct
+sch = Avro.parseschema(&quot;sensor_reading.avsc&quot;)
+reading = Avro.read(msg.value, sch)
+# `reading` is an Avro.Record — access fields like reading.sensor_id</code></pre><div class="admonition is-info"><header class="admonition-header">Schema Registry</header><div class="admonition-body"><p>Avro.jl does <strong>not</strong> implement the <a href="https://docs.confluent.io/platform/current/schema-registry/">Confluent Schema Registry</a> wire format (magic byte + 4-byte schema ID prefix). If your Kafka cluster uses Schema Registry, you will need to strip the 5-byte prefix before passing the payload to <code>Avro.read</code>, and prepend it when producing. A minimal helper:</p><pre><code class="language-julia"># Strip 5-byte Confluent header (byte 0x00 + 4-byte schema ID)
+raw_avro = msg.value[6:end]
+reading = Avro.read(raw_avro, sch)</code></pre></div></div><hr/><h2 id="API-Reference"><a class="docs-heading-anchor" href="#API-Reference">API Reference</a><a id="API-Reference-1"></a><a class="docs-heading-anchor-permalink" href="#API-Reference" title="Permalink"></a></h2><ul><li><a href="#Avro.Avro"><code>Avro.Avro</code></a></li><li><a href="#Avro.Table"><code>Avro.Table</code></a></li><li><a href="#Avro.generate_code-Tuple{Any}"><code>Avro.generate_code</code></a></li><li><a href="#Avro.generate_type-Tuple{Any}"><code>Avro.generate_type</code></a></li><li><a href="#Avro.parseschema-Tuple{Any}"><code>Avro.parseschema</code></a></li><li><a href="#Avro.read"><code>Avro.read</code></a></li><li><a href="#Avro.readtable"><code>Avro.readtable</code></a></li><li><a href="#Avro.tobuffer-Tuple{Any}"><code>Avro.tobuffer</code></a></li><li><a href="#Avro.write"><code>Avro.write</code></a></li><li><a href="#Avro.writetable"><code>Avro.writetable</code></a></li></ul><article class="docstring"><header><a class="docstring-binding" id="Avro.Avro" href="#Avro.Avro"><code>Avro.Avro</code></a> — <span class="docstring-category">Module</span></header><section><div><p>The Avro.jl package provides a pure Julia implementation for reading writing data in the <a href="https://avro.apache.org/docs/1.12.0/specification/">avro format</a>.</p><p><strong>Implementation status</strong></p><p>It currently supports:</p><ul><li>All primitive types</li><li>All nested/complex types</li><li>Logical types listed in the spec (Decimal, UUID, Date, Time, Timestamps, Duration)</li><li>Binary encoding/decoding</li><li>Reading/writing object container files via the Tables.jl interface</li><li>Supports the xz, zstd, deflate, and bzip2 compression codecs for object container files</li></ul><p>Currently not supported are:</p><ul><li>JSON encoding/decoding of objects</li><li>Single object encoding or schema fingerprints</li><li>Schema resolution</li><li>Protocol messages, calls, handshakes</li><li>Snappy compression</li></ul><p><strong>Package motivation</strong></p><p>Why use the avro format vs. other data formats? Some benefits include:</p><ul><li>Very concise binary encoding, especially object container files with compression</li><li>Very fast reading/writing</li><li>Objects/data must have well-defined schema</li><li>One of the few &quot;row-oriented&quot; binary data formats</li></ul><p><strong>Getting started</strong></p><p>The Avro.jl package supports two main APIs to interact with avro data. The first is similar to the JSON3.jl struct API for interacting with json data, largely in part due to the similarities between the avro format and json. This looks like:</p><pre><code class="language-julia">buf = Avro.write(obj)
+obj = Avro.read(buf, typeof(obj))</code></pre><p>In short, we use <a href="#Avro.write"><code>Avro.write</code></a> and provide an object <code>obj</code> to write out in the avro format. We can optionally provide a filename or <code>IO</code> as a first argument to write the data to.</p><p>We can then read the data back in using <a href="#Avro.read"><code>Avro.read</code></a>, where the first argument must be a filename, <code>IO</code>, or any <code>AbstractVector{UInt8}</code> byte buffer containing avro data. The 2nd argument is <em>required</em>, and is the type of data to be read. This type can be provided as a simple Julia type (like <code>Avro.read(buf, Vector{String})</code>), or as a parsed avro schema, like <code>Avro.read(buf, Avro.parseschema(&quot;schema.avsc&quot;))</code>. <a href="#Avro.parseschema-Tuple{Any}"><code>Avro.parseschema</code></a> takes a filename or json string representing the avro schema of the data to read and returns a &quot;schema type&quot; that can be passed to <code>Avro.read</code>.</p><p>The second alternative API allows &quot;packaging&quot; the data&#39;s schema with the data in what the avro spec calls an &quot;object container&quot; file. While <code>Avro.read</code>/<code>Avro.write</code> require the user to already know or pass the schema externally, <a href="#Avro.writetable"><code>Avro.writetable</code></a> and <a href="#Avro.readtable"><code>Avro.readtable</code></a> can write/read avro object container files, and will take care of any schema writing/reading, compression, etc. automatically. These table functions unsurprisingly utilize the ubiquitous Tables.jl interface to facilitate integrations with other formats.</p><pre><code class="language-julia"># write our input_table out to a file named &quot;data.avro&quot; using the zstd compression codec
+# input_table can be any Tables.jl-compatible source, like CSV.File, Arrow.Table, DataFrame, etc.
+Avro.writetable(&quot;data.avro&quot;, input_table; compress=:zstd)
+
+# we can also read avro data from object container files
+# if file uses compression, it will be decompressed automatically
+# the schema of the data is packaged in the object container file itself
+# and will be parsed before constructing the file table
+tbl = Avro.readtable(&quot;data.avro&quot;)
+# the returned type is `Avro.Table`, which satisfies the Tables.jl interface
+# which means it can be sent to any valid sink function, like
+# Arrow.write(&quot;data.arrow&quot;, tbl), CSV.write(&quot;data.csv&quot;, tbl), or DataFrame(tbl)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaData/Avro.jl/blob/6bcd87d069019195e7f4d297bc28782afe5f7900/src/Avro.jl#L4-L82">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Avro.Table" href="#Avro.Table"><code>Avro.Table</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia">Avro.Table</code></pre><p>A Tables.jl-compatible source returned from <code>Avro.readtable</code>. Conceptually, it can be thought of as an <code>AbstractVector{Record}</code>, where <code>Record</code> is the avro version of a &quot;row&quot; or NamedTuple. Thus, <code>Avro.Table</code> supports indexing/iteration like an <code>AbstractVector</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaData/Avro.jl/blob/6bcd87d069019195e7f4d297bc28782afe5f7900/src/tables.jl#L131-L138">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Avro.generate_code-Tuple{Any}" href="#Avro.generate_code-Tuple{Any}"><code>Avro.generate_code</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia">Avro.generate_code(schema_or_file; module_name=nothing) -&gt; String</code></pre><p>Generate Julia source code (struct definitions + StructTypes declarations) from an Avro schema. The input can be:</p><ul><li>A file path to a <code>.avsc</code> file</li><li>A JSON string containing an Avro schema</li><li>An already-parsed <code>Avro.Schema</code> object</li></ul><p>Returns a <code>String</code> of valid Julia code that defines structs corresponding to all record and enum types in the schema, with appropriate <code>StructTypes</code> declarations so they work directly with <code>Avro.read</code> and <code>Avro.write</code>.</p><p><strong>Examples</strong></p><pre><code class="language-julia">code = Avro.generate_code(&quot;&quot;&quot;
+{
+  &quot;type&quot;: &quot;record&quot;,
+  &quot;name&quot;: &quot;SensorReading&quot;,
+  &quot;fields&quot;: [
+    {&quot;name&quot;: &quot;sensor_id&quot;, &quot;type&quot;: &quot;long&quot;},
+    {&quot;name&quot;: &quot;temperature&quot;, &quot;type&quot;: &quot;double&quot;},
+    {&quot;name&quot;: &quot;location&quot;, &quot;type&quot;: [&quot;null&quot;, &quot;string&quot;]}
+  ]
+}
+&quot;&quot;&quot;)
+println(code)
+# struct SensorReading
+#     sensor_id::Int64
+#     temperature::Float64
+#     location::Union{Missing, String}
+# end
+# StructTypes.StructType(::Type{SensorReading}) = StructTypes.Struct()
+
+# Write to a file for your project
+write(&quot;src/avro_types.jl&quot;, code)</code></pre><p>See also <a href="#Avro.generate_type-Tuple{Any}"><code>Avro.generate_type</code></a>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaData/Avro.jl/blob/6bcd87d069019195e7f4d297bc28782afe5f7900/src/codegen.jl#L1-L41">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Avro.generate_type-Tuple{Any}" href="#Avro.generate_type-Tuple{Any}"><code>Avro.generate_type</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia">Avro.generate_type(schema_or_file) -&gt; Type</code></pre><p>Generate Julia types at runtime from an Avro schema file, JSON string, or parsed <code>Avro.Schema</code> object. Returns the root Julia type, ready for use with <code>Avro.read</code> and <code>Avro.write</code>.</p><p>Unlike <a href="#Avro.generate_code-Tuple{Any}"><code>Avro.generate_code</code></a> which returns source code as a string, this function evaluates the generated types immediately into an anonymous module, making it convenient for interactive and scripting use.</p><p><strong>Examples</strong></p><pre><code class="language-julia">T = Avro.generate_type(&quot;&quot;&quot;
+{
+  &quot;type&quot;: &quot;record&quot;,
+  &quot;name&quot;: &quot;Point&quot;,
+  &quot;fields&quot;: [
+    {&quot;name&quot;: &quot;x&quot;, &quot;type&quot;: &quot;double&quot;},
+    {&quot;name&quot;: &quot;y&quot;, &quot;type&quot;: &quot;double&quot;}
+  ]
+}
+&quot;&quot;&quot;)
+
+buf = Avro.write((x = 1.0, y = 2.0))
+p = Avro.read(buf, T)
+p.x  # 1.0
+p.y  # 2.0</code></pre><p>See also <a href="#Avro.generate_code-Tuple{Any}"><code>Avro.generate_code</code></a>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaData/Avro.jl/blob/6bcd87d069019195e7f4d297bc28782afe5f7900/src/codegen.jl#L76-L108">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Avro.parseschema-Tuple{Any}" href="#Avro.parseschema-Tuple{Any}"><code>Avro.parseschema</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia">Avro.parseschema(file_or_jsonstring)</code></pre><p>Parse the avro schema in a file or raw json string. The schema is expected to follow the format as described in the official <a href="https://avro.apache.org/docs/1.12.0/specification/#schema-declaration">spec</a>. Returns a &quot;schema type&quot; that can be passed to <code>Avro.read(buf, sch)</code> as the 2nd argument.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaData/Avro.jl/blob/6bcd87d069019195e7f4d297bc28782afe5f7900/src/utils.jl#L60-L67">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Avro.read" href="#Avro.read"><code>Avro.read</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia">Avro.read(source, T_or_sch) =&gt; T</code></pre><p>Read an avro-encoded object of type <code>T</code> or avro schema <code>sch</code> from <code>source</code>, which can be a byte buffer <code>AbstractVector{UInt8}</code>, file name <code>String</code>, or <code>IO</code>.</p><p>The data in <code>source</code> must be avro-formatted data, as no schema verification can be done. Note that &quot;avro object container files&quot; should be processed using <a href="#Avro.readtable"><code>Avro.readtable</code></a> instead, where the data schema is encoded in the file itself. Also note that the 2nd argument can be a Julia type like <code>Vector{String}</code>, or a valid <code>Avro.Schema</code> type object, like is returned from <code>Avro.parseschema(src)</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaData/Avro.jl/blob/6bcd87d069019195e7f4d297bc28782afe5f7900/src/types/binary.jl#L42-L54">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Avro.readtable" href="#Avro.readtable"><code>Avro.readtable</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia">Avro.readtable(file_or_io) =&gt; Avro.Table</code></pre><p>Read an avro object container file, returning an <a href="#Avro.Table"><code>Avro.Table</code></a> type, which is like an array of records, where each record follows the  schema encoded with the file. Any compression will be detected and decompressed automatically when reading.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaData/Avro.jl/blob/6bcd87d069019195e7f4d297bc28782afe5f7900/src/tables.jl#L156-L163">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Avro.tobuffer-Tuple{Any}" href="#Avro.tobuffer-Tuple{Any}"><code>Avro.tobuffer</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia">Avro.tobuffer(tbl; kw...)</code></pre><p>Take a Tables.jl-compatible input <code>tbl</code> and call <code>Avro.writetable</code> with an <code>IOBuffer</code>, which is returned, with position at the beginning.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaData/Avro.jl/blob/6bcd87d069019195e7f4d297bc28782afe5f7900/src/utils.jl#L47-L52">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Avro.write" href="#Avro.write"><code>Avro.write</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia">Avro.write([filename|io,] x::T; kw...)</code></pre><p>Write an object <code>x</code> of avro-supported type <code>T</code> in the avro format. If a file name is provided as a <code>String</code> as 1st argument, the avro data will be written out to disk. Similarly, an <code>IO</code> argument can be provided as 1st argument. If no destination 1st argument is provided, a byte buffer <code>Vector{UInt8}</code> will be returned with avro data written to it. Supported keyword arguments include:</p><ul><li><code>schema</code>: the type that should be used when encoding the object in</li></ul><p>the avro format; most common is providing a <code>Union{...}</code> type to write   the data out specifically as a &quot;union type&quot; instead of only the type of the object;   alternatively, a valid <code>Avro.Schema</code> can be passed, like the result of   <code>Avro.parseschema(src)</code></p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaData/Avro.jl/blob/6bcd87d069019195e7f4d297bc28782afe5f7900/src/types/binary.jl#L1-L15">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Avro.writetable" href="#Avro.writetable"><code>Avro.writetable</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia">Avro.writetable(io_or_file, tbl; kw...)</code></pre><p>Write an input Tables.jl-compatible source table <code>tbl</code> out as an avro object container file. <code>io_or_file</code> can be a file name as a <code>String</code> or <code>IO</code> argument. If the input table supports <code>Table.partitions</code>, each partition will be written as a separate &quot;block&quot; in the container file.</p><p>Because avro data is strictly typed, if the input table doesn&#39;t have a well-defined schema (i.e. <code>Tables.schema(Tables.rows(tbl)) === nothing</code>), then <code>Tables.dictrowtable(Tables.rows(tbl))</code> will be called, which scans the input table, &quot;building up&quot; the schema based on types of values found in each row.</p><p>Compression is supported via the <code>compress</code> keyword argument, and can currently be one of <code>:zstd</code>, <code>:deflate</code>, <code>:bzip2</code>, or <code>:xz</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaData/Avro.jl/blob/6bcd87d069019195e7f4d297bc28782afe5f7900/src/tables.jl#L14-L30">source</a></section></article></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Sunday 15 February 2026 20:15">Sunday 15 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

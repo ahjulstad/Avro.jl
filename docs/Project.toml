@@ -1,3 +1,4 @@
 [deps]
 Avro = "65fc3dcb-49af-4f0c-a340-607eef534a14"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+StructTypes = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"

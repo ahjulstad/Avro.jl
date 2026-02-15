@@ -18,11 +18,11 @@ macro readcheck(n)
     end)
 end
 
-function tozigzag(x::T) where {T <: Integer}
+function tozigzag(x::T) where {T<:Integer}
     return xor(x << 1, x >> (8 * sizeof(T) - 1))
 end
 
-function fromzigzag(x::T) where {T <: Integer}
+function fromzigzag(x::T) where {T<:Integer}
     return xor(x >> 1, -(x & T(1)))
 end
 
@@ -61,7 +61,7 @@ end
     Avro.parseschema(file_or_jsonstring)
 
 Parse the avro schema in a file or raw json string. The schema is
-expected to follow the format as described in the official [spec](http://avro.apache.org/docs/current/spec.html#schemas).
+expected to follow the format as described in the official [spec](https://avro.apache.org/docs/1.12.0/specification/#schema-declaration).
 Returns a "schema type" that can be passed to `Avro.read(buf, sch)` as
 the 2nd argument.
 """

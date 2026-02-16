@@ -16,9 +16,9 @@ to it. Supported keyword arguments include:
 function write end
 
 function write(obj::T;
-        schema=schematype(T),
-        jsonencoding::Bool=false,
-        kw...) where {T}
+    schema=schematype(T),
+    jsonencoding::Bool=false,
+    kw...) where {T}
     E = jsonencoding ? JSON() : Binary()
     pos = 1
     sch = schematype(schema)
@@ -110,22 +110,22 @@ skipvalue(::Binary, ::BooleanType, T, buf, pos, len, opts) = pos + 1
 nbytes(::BooleanType, T) = 1
 
 # generic fallbacks to convert to supported number type
-const NumberType = Union{IntType, LongType}
-const FloatTypes = Union{FloatType, DoubleType}
+const NumberType = Union{IntType,LongType}
+const FloatTypes = Union{FloatType,DoubleType}
 
 writevalue(B::Binary, S::NumberType, y::T, buf, pos, len, opts) where {T} =
     writevalue(B, S, StructTypes.construct(StructTypes.numbertype(T), y), buf, pos, len, opts)
 
-function readvalue(B::Binary, S::Union{NumberType, FloatTypes}, ::Type{T}, buf, pos, len, opts) where {T}
+function readvalue(B::Binary, S::Union{NumberType,FloatTypes}, ::Type{T}, buf, pos, len, opts) where {T}
     x, pos = _readvalue(B, S, StructTypes.numbertype(T), buf, pos, len, opts)
     return StructTypes.construct(T, x), pos
 end
 
 # read/write integers in vint zigzag format: https://lucene.apache.org/core/3_5_0/fileformats.html#VInt
-writevalue(B::Binary, N::NumberType, y::T, buf, pos, len, opts) where {T <: Unsigned} =
+writevalue(B::Binary, N::NumberType, y::T, buf, pos, len, opts) where {T<:Unsigned} =
     writevalue(B, N, signed(widen(y)), buf, pos, len, opts)
 
-function writevalue(::Binary, ::NumberType, y::T, buf, pos, len, opts) where {T <: Signed}
+function writevalue(::Binary, ::NumberType, y::T, buf, pos, len, opts) where {T<:Signed}
     x = tozigzag(y)
     while true
         # are any bits higher than least 7 set? if not, we're done
@@ -139,7 +139,7 @@ function writevalue(::Binary, ::NumberType, y::T, buf, pos, len, opts) where {T 
     end
 end
 
-function nbytes(::NumberType, y::T) where {T <: Integer}
+function nbytes(::NumberType, y::T) where {T<:Integer}
     x = tozigzag(y)
     N = 1
     while true
@@ -152,12 +152,12 @@ function nbytes(::NumberType, y::T) where {T <: Integer}
     end
 end
 
-function _readvalue(B::Binary, N::NumberType, ::Type{T}, buf, pos, len, opts) where {T <: Unsigned}
+function _readvalue(B::Binary, N::NumberType, ::Type{T}, buf, pos, len, opts) where {T<:Unsigned}
     x, pos = _readvalue(B, N, signed(T), buf, pos, len, opts)
     return Core.bitcast(T, x), pos
 end
 
-function _readvalue(::Binary, ::NumberType, ::Type{T}, buf, pos, len, opts) where {T <: Signed}
+function _readvalue(::Binary, ::NumberType, ::Type{T}, buf, pos, len, opts) where {T<:Signed}
     x = T(0)
     shift = 0
     len = length(buf)
@@ -171,7 +171,7 @@ function _readvalue(::Binary, ::NumberType, ::Type{T}, buf, pos, len, opts) wher
     return x, pos
 end
 
-function skipvalue(::Binary, ::NumberType, ::Type{T}, buf, pos, len, opts) where {T <: Integer}
+function skipvalue(::Binary, ::NumberType, ::Type{T}, buf, pos, len, opts) where {T<:Integer}
     len = length(buf)
     @inbounds while pos <= len && (buf[pos] & 0x80) > 0
         pos += 1
@@ -181,7 +181,7 @@ end
 
 # float/double
 
-function writevalue(::Binary, ::FloatTypes, x::T, buf, pos, len, opts) where {T <: Base.IEEEFloat}
+function writevalue(::Binary, ::FloatTypes, x::T, buf, pos, len, opts) where {T<:Base.IEEEFloat}
     N = sizeof(T)
     @check N
     ref = Ref(x)
@@ -189,9 +189,9 @@ function writevalue(::Binary, ::FloatTypes, x::T, buf, pos, len, opts) where {T 
     return pos + N
 end
 
-nbytes(::FloatTypes, x::T) where {T <: Base.IEEEFloat} = sizeof(T)
+nbytes(::FloatTypes, x::T) where {T<:Base.IEEEFloat} = sizeof(T)
 
-function _readvalue(::Binary, ::FloatTypes, ::Type{T}, buf, pos, len, opts) where {T <: Base.IEEEFloat}
+function _readvalue(::Binary, ::FloatTypes, ::Type{T}, buf, pos, len, opts) where {T<:Base.IEEEFloat}
     @readcheck sizeof(T)
     GC.@preserve buf begin
         ptr::Ptr{T} = pointer(buf, pos)
@@ -200,7 +200,7 @@ function _readvalue(::Binary, ::FloatTypes, ::Type{T}, buf, pos, len, opts) wher
     return x, pos + sizeof(T)
 end
 
-skipvalue(::Binary, ::FloatTypes, ::Type{T}, buf, pos, len, opts) where {T <: Base.IEEEFloat} = pos + sizeof(T)
+skipvalue(::Binary, ::FloatTypes, ::Type{T}, buf, pos, len, opts) where {T<:Base.IEEEFloat} = pos + sizeof(T)
 
 # bytes/strings
 _codeunits(x::AbstractVector{UInt8}) = x
@@ -212,7 +212,7 @@ writevalue(B::Binary, S::StringType, x, buf, pos, len, opts) =
 writevalue(B::Binary, S::BytesType, x, buf, pos, len, opts) =
     _writevalue(B, S, x, buf, pos, len, opts)
 
-const BytesOrString = Union{BytesType, StringType}
+const BytesOrString = Union{BytesType,StringType}
 
 function _writevalue(B::Binary, ::BytesOrString, x, buf, pos, len, opts)
     N = sizeof(x)
@@ -238,7 +238,7 @@ nbytes(::BytesOrString, x) = nbytes(long, sizeof(_codeunits(x))) + sizeof(_codeu
 function readvalue(B::Binary, ::BytesType, ::Type{T}, buf, pos, len, opts) where {T}
     N, pos = readvalue(B, long, Int64, buf, pos, len, opts)
     @readcheck N
-    return StructTypes.construct(T, view(buf, pos:(pos + N - 1))), N + pos
+    return StructTypes.construct(T, view(buf, pos:(pos+N-1))), N + pos
 end
 
 function skipvalue(B::Binary, ::BytesOrString, ::Type{T}, buf, pos, len, opts) where {T}

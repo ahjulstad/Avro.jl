@@ -71,6 +71,8 @@ read(io::IOBuffer, sch; kw...) = read(io.data, sch; kw...)
 # fallbacks
 writevalue(E::Encoding, x::T, buf, pos, len, opts) where {T} =
     writevalue(E, schematype(T), x, buf, pos, len, opts)
+writevalue(B::Binary, sch::String, x, buf, pos, len, opts) =
+    writevalue(B, PrimitiveType(sch), x, buf, pos, len, opts)
 readvalue(E::Encoding, ::Type{T}, buf, pos, len, opts) where {T} =
     readvalue(E, schematype(T), T, buf, pos, len, opts)
 readvalue(B::Binary, sch::String, ::Type{T}, buf, pos, len, opts) where {T} =
@@ -81,6 +83,9 @@ skipvalue(B::Binary, sch::String, ::Type{T}, buf, pos, len, opts) where {T} =
     skipvalue(B, PrimitiveType(sch), T, buf, pos, len, opts)
 
 nbytes(x::T) where {T} = nbytes(schematype(T), x)
+
+# fallback for string schemas from parsed JSON (converts to PrimitiveType)
+nbytes(sch::String, x) = nbytes(PrimitiveType(sch), x)
 
 # null
 writevalue(::Binary, ::NullType, x, buf, pos, len, opts) = pos

@@ -245,31 +245,40 @@ sch = Avro.schematype(Sensor)  # assuming Sensor is defined with StructTypes
 
 ### Parsing external schemas
 
-Use [`Avro.parseschema`](@ref) to parse an Avro JSON schema string or `.avsc` file. The returned schema object can be passed directly to `Avro.read`:
+Use [`Avro.parseschema`](@ref) to parse an Avro JSON schema string or `.avsc` file. The returned schema object can be passed to `Avro.write` (via `schema=` keyword) and `Avro.read`:
+
+```jldoctest
+julia> sch = Avro.parseschema("""
+       {
+         "type": "record",
+         "name": "Measurement",
+         "fields": [
+           {"name": "sensor_id", "type": "long"},
+           {"name": "temp",      "type": "double"},
+           {"name": "label",     "type": ["null", "string"]}
+         ]
+       }
+       """);
+
+julia> # Write data using a Julia type that matches the schema
+       row = (sensor_id = 42, temp = 21.5, label = "normal");
+
+julia> buf = Avro.write(row; schema=sch);
+
+julia> # Read using the parsed schema — useful when receiver only has the schema
+       result = Avro.read(buf, sch);
+
+julia> result.sensor_id
+42
+
+julia> result.temp
+21.5
+```
+
+Note: A `.avsc` file can also be parsed by passing the file path:
 
 ```julia
-# From a JSON string
-sch = Avro.parseschema("""
-{
-  "type": "record",
-  "name": "Measurement",
-  "fields": [
-    {"name": "sensor_id", "type": "long"},
-    {"name": "temp",      "type": "double"},
-    {"name": "label",     "type": ["null", "string"]}
-  ]
-}
-""")
-
-# From a .avsc file
 # sch = Avro.parseschema("schema.avsc")
-
-# Write data using a Julia type that matches the schema
-row = (sensor_id = 42, temp = 21.5, label = "normal")
-buf = Avro.write(row)
-
-# Read using the parsed schema — useful when receiver only has the schema
-result = Avro.read(buf, sch)
 ```
 
 ### Schema examples in JSON
